@@ -1,0 +1,31 @@
+---
+title: "Project 2 Report"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Group Members (names and EIDs):
+
+
+
+
+## Introduction
+
+
+
+
+## Data Wrangling
+
+
+
+
+## Results
+
+
+
+
+
+## Discussion
