@@ -13,13 +13,49 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ## Introduction
-Intro here
+
 
 
 
 ## Data Wrangling
 
+```{r}
+library(tidyverse)
+library(tidymodels)
 
+dat <- read_csv("pm25_data.csv.gz")
+
+
+dat_clean <- dat |>
+  select(-id) |>
+  select(where(is.numeric))
+
+dat_split <- initial_split(dat_clean)
+
+#SPlit into train and test
+dat_train <- training(dat_split)
+dat_test <- testing(dat_split)
+
+#Linear Regression Model
+rec <- dat_train |>
+    recipe(value ~ .)
+
+model <- linear_reg() |> 
+    set_engine("lm") |> 
+    set_mode("regression")
+
+wf <- workflow() |> 
+    add_recipe(rec) |> 
+    add_model(model)
+
+folds <- vfold_cv(dat_train, v = 10)
+folds
+res <- wf |> 
+    fit_resamples(resamples = folds)
+res |> 
+    collect_metrics()
+
+```
 
 
 ## Results
