@@ -7,7 +7,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-### Group Members (names and EIDs):
+### Group Members (names and EIDs): Ria Bhatia (rnb982) & Ethan Benson (erb2994)
 
 
 
