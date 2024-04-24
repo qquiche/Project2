@@ -49,10 +49,70 @@ wf <- workflow() |>
     add_model(model)
 
 folds <- vfold_cv(dat_train, v = 10)
-folds
-res <- wf |> 
+
+res_lin <- wf |> 
     fit_resamples(resamples = folds)
+res_lin |> 
+    collect_metrics()
+
+```
+
+```{r}
+
+# Logistical Regression Model
+```
+
+
+```{r}
+
+# kNN
+```
+
+```{r}
+library(ranger)
+# Random Forest
+rec <- dat_train |> 
+    recipe(value ~ .) |> 
+    step_normalize() 
+
+model <- rand_forest(mtry = tune("mtry"),
+                     min_n = tune("min_n")) |> 
+    set_engine("ranger") |> 
+    set_mode("regression")
+
+wf <- workflow() |> 
+    add_recipe(rec) |> 
+    add_model(model)
+
+## Fit model over grid of tuning parameters
+res <- tune_grid(wf, resamples = folds, 
+                 grid = expand.grid(mtry = c(1, 2, 5),
+                                    min_n = c(3, 5)))
+#res |> 
+    #collect_metrics()
+
 res |> 
+    show_best(metric = "rmse")
+
+#res |> 
+    #show_best(metric = "rsq")
+
+
+## Fit the best model obtained from tuning
+model <- rand_forest(mtry = 5,
+                     min_n = 3) |> 
+    set_engine("ranger") |> 
+    set_mode("regression")
+
+wf <- workflow() |> 
+    add_recipe(rec) |> 
+    add_model(model)
+
+## Final model fit
+final <- wf |> 
+    last_fit(split = dat_split)
+
+final |> 
     collect_metrics()
 
 ```
