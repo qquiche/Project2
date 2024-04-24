@@ -16,11 +16,26 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 
+```{r}
+library(tidyverse)
+
+# Data exploration
+
+#scatter plot CMAQ and aod
+
+# PCA
+
+#Rotation plot
+
+#scatter plot
+
+```
+
 
 ## Data Wrangling
 
 ```{r}
-library(tidyverse)
+
 library(tidymodels)
 
 dat <- read_csv("pm25_data.csv.gz")
@@ -59,13 +74,63 @@ res_lin |>
 
 ```{r}
 
-# Logistical Regression Model
+# Logistical Regression Model - Ethan
 ```
 
 
 ```{r}
 
 # kNN
+
+rec <- dat_train |> 
+    recipe(value ~ .) |> 
+    step_normalize() 
+
+## Tune for the optimal number of neighbors
+model <- nearest_neighbor(neighbors = tune("k")) |> 
+    set_engine("kknn") |> 
+    set_mode("regression")
+wf <- workflow() |> 
+    add_model(model) |> 
+    add_recipe(rec)
+wf
+
+folds <- vfold_cv(dat_train, v = 10)
+
+res <- tune_grid(wf, resamples = folds,
+                 grid = tibble(k = c(10, 12, 13, 15, 17, 18, 20, 25)))
+
+res |> 
+    collect_metrics()
+
+res |> 
+    collect_metrics() |> 
+    filter(.metric == "rmse") |> 
+    ggplot(aes(k, mean)) +
+    geom_point() + 
+    geom_line()
+
+res |> 
+    show_best(metric = "rmse")
+
+# Evaluate model with best k = 12
+
+model <- nearest_neighbor(neighbors = 12) |> 
+    set_engine("kknn") |> 
+    set_mode("regression")
+
+wf <- workflow() |> 
+    add_model(model) |> 
+    add_recipe(rec)
+wf
+
+folds <- vfold_cv(dat_train, v = 10)
+
+res <- fit_resamples(wf, resamples = folds)
+
+res |> 
+    collect_metrics()
+
 ```
 
 ```{r}
@@ -120,8 +185,20 @@ final |>
 
 ## Results
 
+```{r}
+# Output all RMSE for each model - Ethan
+
+# Predict using final model on dat_test
 
 
+# Scatter plot of predicted vs observed data points
+
+```
 
 
+```{r}
+
+# Any code for primary questions
+
+```
 ## Discussion
