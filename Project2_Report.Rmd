@@ -14,20 +14,92 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Introduction
 
+*In order to learn more about the relationships in the data, we used multiple exploratory data analysis techniques. First, we conducted a PCA test, which was then used to product a rotation plot, eigenvalues plot, and a scatter plot.*
+
 
 
 ```{r}
-library(tidyverse)
-
 # Data exploration
+library(tidyverse)
+library(broom)
 
-#scatter plot CMAQ and aod
+dat <- read_csv("pm25_data.csv.gz")
+
+
+dat_clean <- dat |>
+  select(-id) |>
+  select(where(is.numeric))
+
+# Scatter plot of CMAQ vs AOD
+dat_clean |> 
+  ggplot(aes(CMAQ, aod)) +
+  geom_point(color = "darkgreen") +
+  theme_classic() +
+  labs(
+    title = "CMAQ vs AOD",
+    x = "CMAQ",
+    y = "AOD"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold")
+  )
 
 # PCA
+pca_fit <- dat_clean |> 
+  select(where(is.numeric)) |> 
+  scale() |> 
+  prcomp()
+pca_fit
 
-#Rotation plot
+# Rotation plot
+arrow_style <- arrow(
+  angle = 20, length = grid::unit(8, "pt"),
+  ends = "first", type = "closed"
+)
 
-#scatter plot
+pca_fit |> 
+  tidy(matrix = "rotation") |>   
+  pivot_wider(
+    names_from = "PC", values_from = "value",
+    names_prefix = "PC"
+  ) |> 
+  ggplot(aes(PC1, PC2)) +
+  geom_segment(
+    xend = 0, yend = 0,
+    arrow = arrow_style
+  ) +
+  geom_text(aes(label = column)) +
+  coord_fixed() +
+  labs(
+    title = "Rotation Plot of PC 1 vs PC 2"
+  ) 
+
+# Eigenvalues plot
+pca_fit |> 
+  tidy(matrix = "eigenvalues") |> 
+  ggplot(aes(PC, percent)) +
+  geom_col() +
+  scale_x_continuous() +
+  scale_y_continuous(labels = scales::label_percent()) +
+  labs(
+    title = "Eigenvalues Plot of Principle Components"
+  )
+
+# Scatter plot
+pca_fit |> 
+  augment(dat_clean) |> 
+  ggplot(aes(x = .fittedPC1, y = .fittedPC2, color = dat_clean$value)) +
+  geom_point() +
+  labs(
+    title = "PC 2 vs PC 1 by Heart Disease Status",
+    x = "PC 1",
+    y = "PC 2"
+  ) +
+  theme_grey() +
+  theme(
+    plot.title = element_text(face = "bold")
+  ) +
+  coord_fixed()
 
 ```
 
@@ -47,7 +119,7 @@ dat_clean <- dat |>
 
 dat_split <- initial_split(dat_clean)
 
-#SPlit into train and test
+#Split into train and test
 dat_train <- training(dat_split)
 dat_test <- testing(dat_split)
 
