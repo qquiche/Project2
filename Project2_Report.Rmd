@@ -72,7 +72,7 @@ pca_fit |>
   coord_fixed() +
   labs(
     title = "Rotation Plot of PC 1 vs PC 2"
-  ) 
+  ) + xlim(-.4, .6) 
 
 # Eigenvalues plot
 pca_fit |> 
@@ -91,7 +91,7 @@ pca_fit |>
   ggplot(aes(x = .fittedPC1, y = .fittedPC2, color = dat_clean$value)) +
   geom_point() +
   labs(
-    title = "PC 2 vs PC 1 by Heart Disease Status",
+    title = "PC 2 vs PC 1 by Average PM2.5 Levels",
     x = "PC 1",
     y = "PC 2"
   ) +
