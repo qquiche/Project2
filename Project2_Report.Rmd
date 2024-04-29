@@ -99,7 +99,8 @@ pca_fit |>
   theme(
     plot.title = element_text(face = "bold")
   ) +
-  coord_fixed()
+  coord_fixed()  +
+  scale_color_gradient(low = "blue", high = "red", breaks = c(0, 10, 20, 30))
 
 ```
 
@@ -112,17 +113,14 @@ library(tidymodels)
 
 dat <- read_csv("pm25_data.csv.gz")
 
-
-dat_clean <- dat |>
-  select(-id) |>
-  select(where(is.numeric))
-
 dat_split <- initial_split(dat_clean)
 
 #Split into train and test
 dat_train <- training(dat_split)
 dat_test <- testing(dat_split)
+```
 
+```{r}
 #Linear Regression Model
 rec <- dat_train |>
     recipe(value ~ .)
@@ -137,16 +135,60 @@ wf <- workflow() |>
 
 folds <- vfold_cv(dat_train, v = 10)
 
-res_lin <- wf |> 
+lin_final <- wf |> 
     fit_resamples(resamples = folds)
-res_lin |> 
+
+res_lin <- lin_final |> 
     collect_metrics()
 
 ```
 
 ```{r}
 
-# Logistical Regression Model - Ethan
+# Neural Net (Multilayer Perceptron)
+rec <- dat_train |> 
+    recipe(value ~ .) |> 
+    step_normalize() 
+
+model <- mlp(hidden_units = tune(), penalty = tune(),
+             epochs = tune()) |> 
+  set_engine("nnet") |> 
+  set_mode("regression")
+
+wf <- workflow() |> 
+    add_model(model) |> 
+    add_recipe(rec)
+
+mlp_grid <- expand.grid(
+  hidden_units = c(5, 10, 15),
+  penalty = c(0, 0.01, 0.1),
+  epochs = c(10, 50, 100)
+)
+
+folds <- vfold_cv(dat_train, v = 10)
+
+res <- tune_grid(wf, resamples = folds, grid = mlp_grid)
+
+res |> 
+    show_best(metric = "rmse")
+
+## Fit the best model obtained from tuning
+model <- mlp(hidden_units = 10, penalty = .1,
+             epochs = 50) |> 
+  set_engine("nnet") |> 
+  set_mode("regression")
+
+wf <- workflow() |> 
+    add_recipe(rec) |> 
+    add_model(model)
+
+## Neural Net Final model fit
+NN_final <- wf |> 
+    last_fit(split = dat_split)
+
+res_NN <- NN_final |> 
+    collect_metrics()
+
 ```
 
 
@@ -156,7 +198,7 @@ res_lin |>
 
 rec <- dat_train |> 
     recipe(value ~ .) |> 
-    step_normalize() 
+    step_normalize()
 
 ## Tune for the optimal number of neighbors
 model <- nearest_neighbor(neighbors = tune("k")) |> 
@@ -165,42 +207,33 @@ model <- nearest_neighbor(neighbors = tune("k")) |>
 wf <- workflow() |> 
     add_model(model) |> 
     add_recipe(rec)
-wf
 
 folds <- vfold_cv(dat_train, v = 10)
 
 res <- tune_grid(wf, resamples = folds,
-                 grid = tibble(k = c(10, 12, 13, 15, 17, 18, 20, 25)))
-
-res |> 
-    collect_metrics()
-
-res |> 
-    collect_metrics() |> 
-    filter(.metric == "rmse") |> 
-    ggplot(aes(k, mean)) +
-    geom_point() + 
-    geom_line()
+                 grid =tibble(k = c(10, 12, 13, 15, 17, 18, 20, 25)))
 
 res |> 
     show_best(metric = "rmse")
 
 # Evaluate model with best k = 12
+rec <- dat_train |> 
+    recipe(value ~ .) |> 
+    step_normalize()
 
 model <- nearest_neighbor(neighbors = 12) |> 
     set_engine("kknn") |> 
     set_mode("regression")
 
 wf <- workflow() |> 
-    add_model(model) |> 
-    add_recipe(rec)
-wf
+    add_recipe(rec) |> 
+    add_model(model)
 
-folds <- vfold_cv(dat_train, v = 10)
+## Final model fit
+kNN_final <- wf |> 
+    last_fit(split = dat_split)
 
-res <- fit_resamples(wf, resamples = folds)
-
-res |> 
+res_kNN <- kNN_final |> 
     collect_metrics()
 
 ```
@@ -225,14 +258,9 @@ wf <- workflow() |>
 res <- tune_grid(wf, resamples = folds, 
                  grid = expand.grid(mtry = c(1, 2, 5),
                                     min_n = c(3, 5)))
-#res |> 
-    #collect_metrics()
 
 res |> 
     show_best(metric = "rmse")
-
-#res |> 
-    #show_best(metric = "rsq")
 
 
 ## Fit the best model obtained from tuning
@@ -246,10 +274,10 @@ wf <- workflow() |>
     add_model(model)
 
 ## Final model fit
-final <- wf |> 
+randFor_final <- wf |> 
     last_fit(split = dat_split)
 
-final |> 
+res_rf <-randFor_final |> 
     collect_metrics()
 
 ```
@@ -259,12 +287,30 @@ final |>
 
 ```{r}
 # Output all RMSE for each model - Ethan
+# Linear Model Metrics
+res_lin
 
-# Predict using final model on dat_test
+# Neural net Metrics
+res_NN
 
+# kNN Metrics
+res_kNN
+
+# Random Forest Metrics
+res_rf
+
+# Prep dat_test
+dat_test <- rec |> 
+    prep() |> 
+    bake(new_data = testing(dat_split))
 
 # Scatter plot of predicted vs observed data points
-
+randFor_final |> 
+    extract_fit_parsnip() |> 
+    augment(new_data = dat_test) |> 
+    select(value, .pred) |> 
+    ggplot(aes(.pred, value)) + 
+    geom_point(alpha = 1/10)
 ```
 
 
