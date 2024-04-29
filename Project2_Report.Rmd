@@ -341,3 +341,5 @@ randFor_final |>
 ## Discussion
 
 *It is notable that the data set does not include data from Alaska or Hawaii. We believe that the model would not perform as well due to Alaska and Hawaii both having significantly different environments compared to the rest of the states. On one hand, Alaska is much colder can the rest of the states, which can lead to different air quality patterns. On the other hand, Hawaii tends to have warmer weather conditions and is surrounded by a body of water, leading to differing air quality patterns as well. *
+
+*In the process of conducting this process, we faced challenges in choosing appropriate models to conduct our analysis. For instance, in the beginning, we wanted to include a logistic regression model, which did not end up being feasible for our analysis.*
