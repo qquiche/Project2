@@ -14,21 +14,24 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Introduction
 
-*In order to learn more about the relationships in the data, we used multiple exploratory data analysis techniques. First, we conducted a PCA test, which was then used to product a rotation plot, eigenvalues plot, and a scatter plot.*
+*For our comparison, we chose the following modeling approaches: linear regression, neural net (multilayer perception), kNN, and random forest. With these models, we used all of the available predictors, so we could truly understand the relationship between each predictor and the observations. In order to learn more about the relationships in the data, we used multiple exploratory data analysis techniques. First, we created a scatter plot to understand the relationship between CMAQ and AOD. Second, we conducted a PCA test, which was then used to produce a rotation plot, eigenvalues plot, and scatter plot. After creating the models and conducting exploratory analysis, we hypothesized that either neural nets or random forest would be the best model. This would be because random forest incorporates assembling and neural nets can be tuned a lot, which is very helpful since we have many inputs.*
 
 
 
 ```{r}
-# Data exploration
+# Reading in the libraries and data set
 library(tidyverse)
 library(broom)
 
 dat <- read_csv("pm25_data.csv.gz")
 
-
-dat_clean <- dat |>
+dat_clean <- dat |> # Cleaning the data set
   select(-id) |>
   select(where(is.numeric))
+```
+
+```{r}
+# Data exploration
 
 # Scatter plot of CMAQ vs AOD
 dat_clean |> 
@@ -43,6 +46,10 @@ dat_clean |>
   theme(
     plot.title = element_text(face = "bold")
   )
+```
+
+```{r}
+# Data exploration continued - PCA
 
 # PCA
 pca_fit <- dat_clean |> 
@@ -315,8 +322,22 @@ randFor_final |>
 
 
 ```{r}
+# Code for primary questions
 
-# Any code for primary questions
+# Question 1: Geographic locations
 
 ```
+
+```{r}
+# Question 2: Variables
+
+```
+
+```{r}
+# Question 3: CMAQ & AOD
+
+```
+
 ## Discussion
+
+*It is notable that the data set does not include data from Alaska or Hawaii. We believe that the model would not perform as well due to Alaska and Hawaii both having significantly different environments compared to the rest of the states. On one hand, Alaska is much colder can the rest of the states, which can lead to different air quality patterns. On the other hand, Hawaii tends to have warmer weather conditions and is surrounded by a body of water, leading to differing air quality patterns as well. *
