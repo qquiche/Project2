@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Introduction
 
-*For our comparison, we chose the following modeling approaches: linear regression, neural net (multilayer perceptron), kNN, and random forest. With these models, we used all of the available predictors, so we could truly understand the relationship between each predictor and the observations. In order to learn more about the relationships in the data, we used multiple exploratory data analysis techniques. First, we created a scatter plot to understand the relationship between CMAQ and AOD. Second, we conducted a PCA test, which was then used to produce a rotation plot, eigenvalues plot, and scatter plot to understand which variables might provide the strongest relations to average PM2.5 levels. After creating the models and conducting exploratory analysis, we hypothesized that either neural nets or random forest would be the best model. This would be because random forest incorporates ensembling decision trees, which usually leads to better results and neural nets has a lot of hyper parameters we can tune. Such models work great for a lots of input data. We believed linear and KNN models would perform worse as KNN would suffer form the curse of dimensionality due to the large amount of variables and linear models are too simplistic for the possible complex relationships between so many variables.*
+*For our comparison, we chose the following modeling approaches: linear regression, neural net (multilayer perceptron), kNN, and random forest. With these models, we used all of the available predictors, so we could truly understand the relationship between each predictor and the observations. In order to learn more about the relationships in the data, we used multiple exploratory data analysis techniques. First, we created a scatter plot to understand the relationship between CMAQ and AOD. Second, we conducted a PCA test, which was then used to produce a rotation plot, eigenvalues plot, and scatter plot to understand which variables might provide the strongest relations to average PM2.5 levels. This showed us that the log data of pollutants in various ranges overlap greatly, but based on preliminary testing, combining or removing them does not affect the performance of our models. After creating the models and conducting exploratory analysis, we hypothesized that either neural nets or random forest would be the best model. This would be because random forest incorporates ensembling decision trees which can handle many inputs and usually leads to better results and neural nets has a lot of hyper parameters we can tune. Such models work great for a lots of input data. We believed linear and KNN models would perform worse as KNN would suffer form the curse of dimensionality due to the large amount of variables and linear models are too simplistic for the possible complex relationships between so many variables. Our best model should should have an RMSE value below 2.*
 
 
 ## Data Wrangling
@@ -46,7 +46,7 @@ dat_test <- dat_test_raw |>
   select(where(is.numeric))
 
 ```
-*In the above code chunk, we loaded the libraries and read in the data. We split the data into the train and test data sets, and then proceeded to clean the data sets.*
+*In the above code chunk, we loaded the libraries and read in the data. We split the data into the train and test data sets, and then proceeded to clean the data sets by removing non-numeric variables and deleting identifiers, like id and fips.*
 
 ```{r}
 # Data exploration
@@ -75,7 +75,6 @@ pca_fit <- dat_clean |>
   select(where(is.numeric)) |> 
   scale() |> 
   prcomp()
-pca_fit
 
 # Rotation plot
 arrow_style <- arrow(
@@ -148,9 +147,11 @@ wf <- workflow() |>
 
 folds <- vfold_cv(dat_train, v = 10)
 
+# Cross val
 lin_final <- wf |> 
     fit_resamples(resamples = folds)
 
+# Store metrics
 res_lin <- lin_final |> 
     collect_metrics()
 
@@ -159,6 +160,7 @@ res_lin <- lin_final |>
 ```{r}
 
 # Neural Net (Multilayer Perceptron)
+
 rec <- dat_train |> 
     recipe(value ~ .) |> 
     step_normalize() 
@@ -172,6 +174,7 @@ wf <- workflow() |>
     add_model(model) |> 
     add_recipe(rec)
 
+# Tuning parameters
 mlp_grid <- expand.grid(
   hidden_units = c(5, 10, 15),
   penalty = c(0, 0.01, 0.1),
@@ -180,12 +183,14 @@ mlp_grid <- expand.grid(
 
 folds <- vfold_cv(dat_train, v = 10)
 
+#Tune Neural Net paraemters
 res <- tune_grid(wf, resamples = folds, grid = mlp_grid)
 
+# Output best parameters
 res |> 
     show_best(metric = "rmse")
 
-## Fit the best model obtained from tuning
+## Fit model with best parameters
 model <- mlp(hidden_units = 10, penalty = .1,
              epochs = 50) |> 
   set_engine("nnet") |> 
@@ -213,7 +218,8 @@ rec <- dat_train |>
     recipe(value ~ .) |> 
     step_normalize()
 
-## Tune for the optimal number of neighbors
+## Tune for best k value
+
 model <- nearest_neighbor(neighbors = tune("k")) |> 
     set_engine("kknn") |> 
     set_mode("regression")
@@ -226,6 +232,7 @@ folds <- vfold_cv(dat_train, v = 10)
 res <- tune_grid(wf, resamples = folds,
                  grid =tibble(k = c(10, 12, 13, 15, 17, 18, 20, 25)))
 
+# Output best k (Lowest RMSE)
 res |> 
     show_best(metric = "rmse")
 
@@ -242,7 +249,7 @@ wf <- workflow() |>
     add_recipe(rec) |> 
     add_model(model)
 
-## Final model fit
+## Final kNN model fit
 kNN_final <- wf |> 
     last_fit(split = dat_split)
 
@@ -253,6 +260,7 @@ res_kNN <- kNN_final |>
 
 ```{r}
 library(ranger)
+
 # Random Forest
 rec <- dat_train |> 
     recipe(value ~ .) |> 
@@ -267,16 +275,17 @@ wf <- workflow() |>
     add_recipe(rec) |> 
     add_model(model)
 
-## Fit model over grid of tuning parameters
+# Tune RF parameters
 res <- tune_grid(wf, resamples = folds, 
                  grid = expand.grid(mtry = c(1, 2, 5),
                                     min_n = c(3, 5)))
 
+# OUtput best parameters
 res |> 
     show_best(metric = "rmse")
 
 
-## Fit the best model obtained from tuning
+## Fit model with best parameters
 model <- rand_forest(mtry = 5,
                      min_n = 3) |> 
     set_engine("ranger") |> 
@@ -286,7 +295,7 @@ wf <- workflow() |>
     add_recipe(rec) |> 
     add_model(model)
 
-## Final model fit
+## Final RF model fit
 randFor_final <- wf |> 
     last_fit(split = dat_split)
 
@@ -299,20 +308,13 @@ res_rf <-randFor_final |>
 ## Results
 
 ```{r}
-# Output all RMSE for each model - Ethan
-# Linear Model Metrics
-res_lin
+# Output all RMSE for each model
 
-# Neural net Metrics
-res_NN
+all_model_metrics <- tibble(Model = c("Linear Reg", "Neural Net (MLP)", "kNN", "Random Forest"), RMSE = c(res_lin$mean[1], res_NN$.estimate[1], res_kNN$.estimate[1], res_rf$.estimate[1]))
 
-# kNN Metrics
-res_kNN
+all_model_metrics
 
-# Random Forest Metrics
-res_rf
-
-# Prep dat_test
+# Prep test data
 dat_test <- rec |> 
     prep() |> 
     bake(new_data = testing(dat_split))
@@ -323,10 +325,13 @@ randFor_final |>
     augment(new_data = dat_test) |> 
     select(value, .pred) |> 
     ggplot(aes(.pred, value)) + 
-    geom_point(alpha = 1/10)
+    geom_point(alpha = 1/10) +
+    labs(title = "Random Forest Predictison vs Actual PM2.5 Levels", x = "Prediction", y = "Average PM2.5 Level")
 ```
 
+**Our best model was Random Forest** 
 
+## Code for Primary Questions
 ```{r}
 # Code for primary questions
 
@@ -400,16 +405,17 @@ wf <- workflow() |>
     add_recipe(rec) |> 
     add_model(model)
 
-## Fit model over grid of tuning parameters
+## Fit RF over tuning parameters
 res <- tune_grid(wf, resamples = folds, 
                  grid = expand.grid(mtry = c(1, 2, 5),
                                     min_n = c(3, 5)))
 
+# Output best parameters
 res |> 
     show_best(metric = "rmse")
 
 
-## Fit the best model obtained from tuning
+## Fit the model using best parameters
 model <- rand_forest(mtry = 5,
                      min_n = 3) |> 
     set_engine("ranger") |> 
@@ -423,6 +429,7 @@ wf <- workflow() |>
 randFor_final <- wf |> 
     last_fit(split = dat_split)
 
+# Output final parameters
 res_rf <-randFor_final |> 
     collect_metrics()
 
@@ -436,10 +443,12 @@ res_rf
 
 *To answer Question 2, I grouped by state and summarized all the numeric values we used as variables by mean. From the data, there doesn't seem to be much similarity between the ones our model predicted better vs worse.In terms of regions, the model performed th best in Southern/Mideast portion of the United State and states closer to the Great Lakes. However looking at the map I noticed that states with a larger area have a higher average residual. One possible hypothesis that states that are smaller have a lot more common geographical and environmental similarities so there are more data points that support a prediction while larger states have more diversity and have sensor more spread apart among vastly different environments leading to more spread-apart data that is harder to find patterns in causing the model to perform poorly. So maybe including state sizing could help the model take the diversity of the state and state wide policy into account*
 
-*To answer Question 3, we conducted a random forest model with the removal of the CMAQ and AOD variables. After the analysis, we found that the model works best when the variables are included (RMSE = 1.760811) rather than when not included (RMSE = 1.855263). To answer Question 4, it is notable that the data set does not include data from Alaska or Hawaii. We believe that the model would not perform as well due to Alaska and Hawaii both having significantly different environments compared to the rest of the states. On one hand, Alaska is much colder can the rest of the states, which can lead to different air quality patterns. On the other hand, Hawaii tends to have warmer weather conditions and is surrounded by a body of water, leading to differing air quality patterns as well.*
+*To answer Question 3, we conducted a random forest model with the removal of the CMAQ and AOD variables. After the analysis, we found that the model works best when the variables are included (RMSE = 1.7305504) rather than when not included (RMSE = 1.7305504).*
 
-*In the process of conducting this project, we faced challenges in choosing appropriate models to conduct our analysis. For instance, in the beginning, we wanted to include a logistic regression model, which did not end up being feasible for our analysis. Overall, we learned that conducting a thorough exploratory analysis to understand our data set would, in the end, help us choose models to evaluate. In our case, we ended up choosing 4 specific models that we predicted would be best for the provided data set.*
+*To answer Question 4, it is notable that the data set does not include data from Alaska or Hawaii. We believe that the model would not perform as well due to Alaska and Hawaii both having significantly different environments compared to the rest of the states. On one hand, Alaska is much colder can the rest of the states, which can lead to different air quality patterns. On the other hand, Hawaii tends to have warmer weather conditions and is surrounded by a body of water, leading to differing air quality patterns as well.*
+
+*In the process of conducting this project, we faced challenges in choosing appropriate models to conduct our analysis. For instance, in the beginning, we wanted to include a logistic regression model, which did not end up being feasible for our analysis as it is used for classification while this is a regression problem. Overall, we learned that conducting a thorough exploratory analysis to understand our data set would, in the end, help us choose models to evaluate. In our case, we ended up choosing 4 specific models that we predicted would be best for the provided data set.*
 
 *Our best and final prediction model is the random forest model. We predicted that the random forest model would work well with the data since it incorporates ensemble learning and works well with complex, nonlinear relationships. Overall, the random forest model helped us understand the relationships within the air quality data set, including the many predictors present.*
 
-*We would like to thank both Professor Peng and TA Bose for their guidance throughout the semester, especially during lecture and lab. This project includes contributions from 2 groups members. Ethan made the following contributions to the project: producing the models and results, editing the introduction, answering the primary questions, and writing the discussion. At the same time, Ria made the following contributions to the project: writing the introduction and discussion, conducting the exploratory analysis, and answering the primary questions.*
+*We would like to thank both Professor Peng and TA Bose for their guidance throughout the semester, especially during lecture and lab. WE modeled our code structure on the Github Eexamples given by Prof. Peng. This project includes contributions from 2 groups members. Ethan made the following contributions to the project: producing the models and results, editing the introduction, answering the primary questions, and writing the discussion. At the same time, Ria made the following contributions to the project: writing the introduction and discussion, conducting the exploratory analysis, and answering the primary questions.*
