@@ -17,17 +17,34 @@ knitr::opts_chunk$set(echo = TRUE)
 *For our comparison, we chose the following modeling approaches: linear regression, neural net (multilayer perceptron), kNN, and random forest. With these models, we used all of the available predictors, so we could truly understand the relationship between each predictor and the observations. In order to learn more about the relationships in the data, we used multiple exploratory data analysis techniques. First, we created a scatter plot to understand the relationship between CMAQ and AOD. Second, we conducted a PCA test, which was then used to produce a rotation plot, eigenvalues plot, and scatter plot to understand which variables might provide the strongest relations to average PM2.5 levels. After creating the models and conducting exploratory analysis, we hypothesized that either neural nets or random forest would be the best model. This would be because random forest incorporates ensembling decision trees, which usually leads to better results and neural nets has a lot of hyper parameters we can tune. Such models work great for a lots of input data. We believed linear and KNN models would perform worse as KNN would suffer form the curse of dimensionality due to the large amount of variables and linear models are too simplistic for the possible complex relationships between so many variables.*
 
 
-
+## Data Wrangling
 ```{r}
 # Reading in the libraries and data set
 library(tidyverse)
 library(broom)
+library(tidymodels)
 
 dat <- read_csv("pm25_data.csv.gz")
 
-dat_clean <- dat |> # Cleaning the data set
-  select(-id) |>
+dat_split <- initial_split(dat)
+
+#Split into train and test and saving the raw data for questions
+dat_train_raw <- training(dat_split)
+dat_test_raw <- testing(dat_split)
+
+# Cleaning the data set
+dat_clean <- dat |> 
+  select(-id, fips) |>
   select(where(is.numeric))
+
+dat_train <- dat_train_raw |>
+  select(-id, -fips) |>
+  select(where(is.numeric))
+
+dat_test <- dat_test_raw |>
+  select(-id, -fips) |>
+  select(where(is.numeric))
+
 ```
 
 ```{r}
@@ -112,20 +129,8 @@ pca_fit |>
 ```
 
 
-## Data Wrangling
 
-```{r}
 
-library(tidymodels)
-
-dat <- read_csv("pm25_data.csv.gz")
-
-dat_split <- initial_split(dat_clean)
-
-#Split into train and test
-dat_train <- training(dat_split)
-dat_test <- testing(dat_split)
-```
 
 ```{r}
 #Linear Regression Model
@@ -326,12 +331,56 @@ randFor_final |>
 
 # Question 1: Geographic locations
 
+library(rnaturalearth)
+
+# Combine test data with predictions
+aug_rf <- randFor_final |> 
+    extract_fit_parsnip() |> 
+    augment(new_data = dat_test_raw)
+    
+# Get avg residuals per state
+state_resid <- aug_rf |>
+  select(value, .pred, state, county, city) |>
+  mutate(residuals = abs(value - .pred)) |>
+  group_by(state) |>
+  summarize(avg_resid = mean(residuals), count = n()) |>
+  arrange(avg_resid) |>
+  mutate(name = state) |>
+  select(-state)
+
+sf_us <- ne_states(
+  country = "United States of America",
+  returnclass='sf'
+)
+sf_us <- sf_us |>
+  left_join(state_resid, by = "name")
+
+# Map of US color map residuals
+sf_us |>
+  # exclude Alaska (US02), Hawaii (US15)
+  filter(!code_local %in% c("US02", "US15")) |>
+  ggplot() + geom_sf(aes(fill = avg_resid)) +
+  labs(title = "Average Residuals by State") +
+  scale_fill_continuous(
+    name = "Average Residual"
+  )
+
 ```
+
 
 ```{r}
 # Question 2: Variables
 
+# State specific numeric means
+aug_rf |>
+  mutate(residuals = abs(value - .pred)) |>
+  select(-id, -fips) |>
+  group_by(state) |>
+  summarize(count = n(), across(where(is.numeric), mean, na.rm = TRUE)) |>
+  arrange(residuals)
+
 ```
+
 
 ```{r}
 # Question 3: CMAQ & AOD
@@ -376,10 +425,15 @@ randFor_final <- wf |>
 res_rf <-randFor_final |> 
     collect_metrics()
 
+res_rf
 
 ```
 
 ## Discussion
+
+*Question 1 Answer: In the above visualization, we color map the average residuals of average PM2.5 levels across states to see where our model predicted the best geographically. From what we can see, the model performed th best in Southern/Mideast portion of the United State, as we have lower residual values in the South. We also performed well in states closer to the Great Lakes.The higher residuals where we performed the worst was the Western states. The distribution of environmental factors affecting PM2.5 levels might vary across different regions. For example, industrial activity, traffic density, and population density can all influence air pollution levels. If our model is better trained on regions with similar environmental factors to those in the Southern/Southeastern US and states near the Great Lakes, it might perform better there. Also, Our model might generalize better to regions with characteristics similar to those in the Southern/Southeastern US and states near the Great Lakes. If the Western states have significantly different characteristics in terms of environmental factors, demographics, or other variables that affect PM2.5 levels, our model might struggle to make accurate predictions there.*
+
+*Question 2 Answer: In the above table, I grouped by state and summarized all the numeric values we used as variables by mean. From the data, there doesn't seem to be much similarity between the ones our model predicted better vs worse.In terms of regions, the model performed th best in Southern/Mideast portion of the United State and states closer to the Great Lakes. However looking at the map I noticed that states with a larger area have a higher average residual. One possible hypothesis that states that are smaller have a lot more common geographical and environmental similarities so there are more data points that support a prediction while larger states have more diversity and have sensor more spread apart among vastly different environments leading to more spread-apart data that is harder to find patterns in causing the model to perform poorly. So maybe including state sizing could help the model take the diversity of the state and state wide policy into account*
 
 *To answer Question 3, we conducted a random forest model with the removal of the CMAQ and AOD variables. After the analysis, we found that the model works best when the variables are included (RMSE = 1.760811) rather than when not included (RMSE = 1.855263). To answer Question 4, it is notable that the data set does not include data from Alaska or Hawaii. We believe that the model would not perform as well due to Alaska and Hawaii both having significantly different environments compared to the rest of the states. On one hand, Alaska is much colder can the rest of the states, which can lead to different air quality patterns. On the other hand, Hawaii tends to have warmer weather conditions and is surrounded by a body of water, leading to differing air quality patterns as well.*
 
