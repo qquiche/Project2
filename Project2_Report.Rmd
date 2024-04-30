@@ -46,6 +46,7 @@ dat_test <- dat_test_raw |>
   select(where(is.numeric))
 
 ```
+*In the above code chunk, we loaded the libraries and read in the data. We split the data into the train and test data sets, and then proceeded to clean the data sets.*
 
 ```{r}
 # Data exploration
@@ -64,6 +65,7 @@ dat_clean |>
     plot.title = element_text(face = "bold")
   )
 ```
+*In the above visualization, we are able to understand the relationship between CMAQ and AOD. The two variables appear to have a moderately positive relationship, but there are many outliers also present.*
 
 ```{r}
 # Data exploration continued - PCA
@@ -127,8 +129,7 @@ pca_fit |>
   scale_color_gradient(low = "blue", high = "red", breaks = c(0, 10, 20, 30))
 
 ```
-
-
+*We conducted a PCA analysis of the variables in the data set to understand the predictors. From the eigenvalues plot, we found that PC 1 is associated with about 35% variance and PC 2 is associated with about 10% variance. We visualized the variables in a rotation plot, where in comparison to the scatter plot, we can understand the variation in the variables by the PM2.5 levels.*
 
 
 
@@ -431,9 +432,9 @@ res_rf
 
 ## Discussion
 
-*Question 1 Answer: In the above visualization, we color map the average residuals of average PM2.5 levels across states to see where our model predicted the best geographically. From what we can see, the model performed th best in Southern/Mideast portion of the United State, as we have lower residual values in the South. We also performed well in states closer to the Great Lakes.The higher residuals where we performed the worst was the Western states. The distribution of environmental factors affecting PM2.5 levels might vary across different regions. For example, industrial activity, traffic density, and population density can all influence air pollution levels. If our model is better trained on regions with similar environmental factors to those in the Southern/Southeastern US and states near the Great Lakes, it might perform better there. Also, Our model might generalize better to regions with characteristics similar to those in the Southern/Southeastern US and states near the Great Lakes. If the Western states have significantly different characteristics in terms of environmental factors, demographics, or other variables that affect PM2.5 levels, our model might struggle to make accurate predictions there.*
+*To answer Question 1, we color map the average residuals of average PM2.5 levels across states to see where our model predicted the best geographically. From what we can see, the model performed th best in Southern/Mideast portion of the United State, as we have lower residual values in the South. We also performed well in states closer to the Great Lakes.The higher residuals where we performed the worst was the Western states. The distribution of environmental factors affecting PM2.5 levels might vary across different regions. For example, industrial activity, traffic density, and population density can all influence air pollution levels. If our model is better trained on regions with similar environmental factors to those in the Southern/Southeastern US and states near the Great Lakes, it might perform better there. Also, Our model might generalize better to regions with characteristics similar to those in the Southern/Southeastern US and states near the Great Lakes. If the Western states have significantly different characteristics in terms of environmental factors, demographics, or other variables that affect PM2.5 levels, our model might struggle to make accurate predictions there.*
 
-*Question 2 Answer: In the above table, I grouped by state and summarized all the numeric values we used as variables by mean. From the data, there doesn't seem to be much similarity between the ones our model predicted better vs worse.In terms of regions, the model performed th best in Southern/Mideast portion of the United State and states closer to the Great Lakes. However looking at the map I noticed that states with a larger area have a higher average residual. One possible hypothesis that states that are smaller have a lot more common geographical and environmental similarities so there are more data points that support a prediction while larger states have more diversity and have sensor more spread apart among vastly different environments leading to more spread-apart data that is harder to find patterns in causing the model to perform poorly. So maybe including state sizing could help the model take the diversity of the state and state wide policy into account*
+*To answer Question 2, I grouped by state and summarized all the numeric values we used as variables by mean. From the data, there doesn't seem to be much similarity between the ones our model predicted better vs worse.In terms of regions, the model performed th best in Southern/Mideast portion of the United State and states closer to the Great Lakes. However looking at the map I noticed that states with a larger area have a higher average residual. One possible hypothesis that states that are smaller have a lot more common geographical and environmental similarities so there are more data points that support a prediction while larger states have more diversity and have sensor more spread apart among vastly different environments leading to more spread-apart data that is harder to find patterns in causing the model to perform poorly. So maybe including state sizing could help the model take the diversity of the state and state wide policy into account*
 
 *To answer Question 3, we conducted a random forest model with the removal of the CMAQ and AOD variables. After the analysis, we found that the model works best when the variables are included (RMSE = 1.760811) rather than when not included (RMSE = 1.855263). To answer Question 4, it is notable that the data set does not include data from Alaska or Hawaii. We believe that the model would not perform as well due to Alaska and Hawaii both having significantly different environments compared to the rest of the states. On one hand, Alaska is much colder can the rest of the states, which can lead to different air quality patterns. On the other hand, Hawaii tends to have warmer weather conditions and is surrounded by a body of water, leading to differing air quality patterns as well.*
 
@@ -441,4 +442,4 @@ res_rf
 
 *Our best and final prediction model is the random forest model. We predicted that the random forest model would work well with the data since it incorporates ensemble learning and works well with complex, nonlinear relationships. Overall, the random forest model helped us understand the relationships within the air quality data set, including the many predictors present.*
 
-*We would like to thank both Professor Peng and TA Bose for their guidance throughout the semester, especially during lecture and lab. This project includes contributions from 2 groups members. Ethan made the following contributions to the project: producing the models and results, editing the introduction, and answering the primary questions. At the same time, Ria made the following contributions to the project: writing the introduction and discussion, conducting the exploratory analysis, and answering the primary questions.*
+*We would like to thank both Professor Peng and TA Bose for their guidance throughout the semester, especially during lecture and lab. This project includes contributions from 2 groups members. Ethan made the following contributions to the project: producing the models and results, editing the introduction, answering the primary questions, and writing the discussion. At the same time, Ria made the following contributions to the project: writing the introduction and discussion, conducting the exploratory analysis, and answering the primary questions.*
